@@ -7,14 +7,14 @@ pipeline {
         disableResume()
     }
 
-    
+    /*
     parameters {
         string name: 'ENVIRONMENT_NAME', trim: true     
         password defaultValue: 'mysql123', description: 'Password to use for MySQL container - root user', name: 'MYSQL_PASSWORD'
         string name: 'MYSQL_PORT', trim: true, defaultValue: '3306' 
         booleanParam(name: 'SKIP_STEP_1', defaultValue: false, description: 'STEP 1 - RE-CREATE DOCKER IMAGE')
     }
-    
+    */
 
     stages {
         /*
@@ -31,10 +31,7 @@ pipeline {
         stage('Create latest Docker image') {
             steps {     
               script {
-                echo "Docker container created: ${params.ENVIRONMENT_NAME}"
-                echo "${params.MYSQL_PORT}"
-                echo "${params.MYSQL_PASSWORD}"
-                echo "${params.SKIP_STEP_1}"
+               
                 if (!params.SKIP_STEP_1){    
                     echo "Creating docker image with name ${params.ENVIRONMENT_NAME} using port: ${params.MYSQL_PORT}"
                     sh """
