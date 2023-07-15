@@ -16,15 +16,15 @@ pipeline {
     }
   
     stages {
-        stage('Checkout GIT repository') {
-            steps {     
-              script {
-                git branch: 'master',
-                credentialsId: '21f01d09-06da9cc35103',
-                url: 'git@mysecret-nonexistent-repo/jenkins.git'
-              }
-            }
-        }
+        //stage('Checkout GIT repository') {
+        //    steps {     
+        //      script {
+        //        git branch: 'master',
+        //        credentialsId: '21f01d09-06da9cc35103',
+        //        url: 'git@mysecret-nonexistent-repo/jenkins.git'
+        //      }
+        //    }
+        //}
         stage('Create latest Docker image') {
             steps {     
               script {
