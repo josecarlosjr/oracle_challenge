@@ -28,6 +28,9 @@ pipeline {
         stage('Create latest Docker image') {
             steps {     
               script {
+                echo "Docker container created: $params.ENVIRONMENT_NAME"
+                echo "$params.MYSQL_PORT"
+                echo "$params.MYSQL_PASSWORD"
                 if (!params.SKIP_STEP_1){    
                     echo "Creating docker image with name $params.ENVIRONMENT_NAME using port: $params.MYSQL_PORT"
                     sh """
@@ -44,7 +47,7 @@ pipeline {
               }
             }
         }
-        stage('Start new container using latest image and create user') {
+        /*stage('Start new container using latest image and create user') {
             steps {     
               script {
                 
@@ -62,7 +65,7 @@ pipeline {
 
               }
             }
-        }
+        }*/
     }
 
 }
