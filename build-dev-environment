@@ -59,7 +59,7 @@ pipeline {
                 """
                 
                 sh """
-                docker exec -i ${containerName} bash -c 'echo \$(cat /scripts/create_developer.sql) | mysql --user=root --password=${params.MYSQL_PASSWORD}'
+                docker exec -i ${containerName} bash -c 'echo \$(cat /scripts/create_developer.sql) | mysql --user=root --password=${params.MYSQL_PASSWORD} --protocol=tcp'
                 """
                 
                 echo "Docker container created: ${containerName}"
