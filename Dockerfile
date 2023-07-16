@@ -1,4 +1,4 @@
-FROM mysql:latest
+FROM mysql:8.0.33
 
 COPY include/create_developer.sql /scripts/
 
