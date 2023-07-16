@@ -1,4 +1,4 @@
-FROM mysql:8.0.33
+FROM mysql:8.0.33-debian
 
 COPY include/create_developer.sql /scripts/
 
