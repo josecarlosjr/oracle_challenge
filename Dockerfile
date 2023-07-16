@@ -7,4 +7,4 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 3306 33060
 
 CMD ["mysqld"]
-#CMD tail -f /dev/null
+
