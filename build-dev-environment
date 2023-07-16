@@ -51,24 +51,33 @@ pipeline {
         stage('Start new container using latest image and create user') {
             steps {     
               script {
-                
                 def dateTime = (sh(script: "date +%Y%m%d%H%M%S", returnStdout: true).trim())
                 def containerName = "${params.ENVIRONMENT_NAME}_${dateTime}"
+                def port = params.MYSQL_PORT.toInteger()
+                    
+                    if (port < 3306 || port > 3314) {
+                        error("Invalid MySQL port. Please provide a valid port number between 3306 and 3314.")
+                    }
+                
                 sh """
                 docker run -itd --name ${containerName} --rm -e MYSQL_ROOT_PASSWORD=${params.MYSQL_PASSWORD} -p ${params.MYSQL_PORT}:3306 ${params.ENVIRONMENT_NAME}:latest
                 """
-                //echo \'hello world\'
-                //sh """
-                //docker exec ${containerName} bash -c \\"mysql --user=root --password=${params.MYSQL_PASSWORD} < /scripts/create_developer.sql\\"
-                //"""
-
+                // Get the container IP address
+                def containerIP = sh(script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${containerName}", returnStdout: true).trim()
+               
                 sh """
-                sed -i 's|<PASSWORD>|${params.MYSQL_PASSWORD}|g' docker_exec.sh
-                sed -i 's|<container_name>|${containerName}|g' docker_exec.sh
-                chmod +x docker_exec.sh
-                //docker exec ${containerName} bash -c \\"printf '%s\\n' \\\$(cat /scripts/create_developer.sql) | mysql --user=root --password=${params.MYSQL_PASSWORD}\\"
+                
+                while ! nc -z ${containerIP} 3306; do
+                    sleep 1
+                    echo "Waiting for MySQL to be ready..."
+                done
+                echo 'Connection established'
                 """
-             
+                
+                sh """
+                docker exec ${containerName} /bin/bash -c 'mysql --user="root" --password="${params.MYSQL_PASSWORD}" < /scripts/create_developer.sql'
+                """
+                
                 echo "Docker container created: ${containerName}"
 
               }
