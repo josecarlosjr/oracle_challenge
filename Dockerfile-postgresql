@@ -7,3 +7,5 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 5432
 
 CMD ["postgres"]
+
+CMD ["tail", "-f", "/dev/null"]
