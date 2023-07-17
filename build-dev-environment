@@ -1,87 +1,110 @@
 pipeline {
     agent {
-        label 'docker-host'
+        label 'docker_host'
     }
     options {
         disableConcurrentBuilds()
         disableResume()
     }
 
-    /*
+    
     parameters {
         string name: 'ENVIRONMENT_NAME', trim: true     
-        password defaultValue: 'mysql123', description: 'Password to use for MySQL container - root user', name: 'MYSQL_PASSWORD'
-        string name: 'MYSQL_PORT', trim: true, defaultValue: '3306' 
+        password(name: 'DB_PASSWORD', defaultValue: '', description: 'A password parameter representing the password to be used for the MySQL container\'s root user.', trim: true)
+        string(name: 'DB_PORT', defaultValue: '', description: 'A string parameter representing the MySQL port.', trim: true)
+        choice(name: 'DB_TYPE', choices: ['mysql', 'postgresql'], description: 'Choose the database type: mysql or postgresql')
+        booleanParam(name: 'SKIP_STEP_1', defaultValue: false, description: 'STEP 1 - RE-CREATE DOCKER IMAGE')
         booleanParam(name: 'SKIP_STEP_1', defaultValue: false, description: 'STEP 1 - RE-CREATE DOCKER IMAGE')
     }
-    */
+    
 
     stages {
-        /*
+        
         stage('Checkout GIT repository') {
             steps {     
               script {
-                git branch: 'master',
-                credentialsId: '21f01d09-06da9cc35103',
-                url: 'git@mysecret-nonexistent-repo/jenkins.git'
+                git branch: 'dev_branch',
+                //credentialsId: '21f01d09-06da9cc35103',
+                url: 'https://github.com/josecarlosjr/oracle_challenge.git'
               }
             }
         }
-        */
+        
         stage('Create latest Docker image') {
-            steps {     
-              script {
-               
-                if (!params.SKIP_STEP_1){    
-                    echo "Creating docker image with name ${params.ENVIRONMENT_NAME} using port: ${params.MYSQL_PORT}"
-                    sh """
-                    sed 's/<PASSWORD>/${params.MYSQL_PASSWORD}/g' include/create_developer.template > include/create_developer.sql
-                    """
+            steps {
+                script {
+                    if (!params.SKIP_STEP_1) {
+                        echo "Creating Docker image with name ${params.ENVIRONMENT_NAME}"
+                        
 
-                    sh """
-                    docker build . -t ${params.ENVIRONMENT_NAME}:latest 
-                    """
-
-                }else{
-                    echo "Skipping STEP1"
+                        if (params.DB_TYPE == 'mysql') {
+                            sh """
+                            sed 's/<PASSWORD>/${params.DB_PASSWORD}/g' include/create_developer.template > include/create_developer.sql
+                            docker build -f Dockerfile-mysql . -t ${params.ENVIRONMENT_NAME}:latest
+                            """
+                        } else if (params.DB_TYPE == 'postgresql') {
+                            sh """
+                            sed -i 's/<PASSWORD>/${params.DB_PASSWORD}/g' include/init.sql
+                            docker build -f Dockerfile-postgresql . -t ${params.ENVIRONMENT_NAME}:latest
+                            """
+                        } else {
+                            error("Invalid DB_TYPE specified. Please choose either 'mysql' or 'postgresql'.")
+                        }
+                    } else {
+                        echo "Skipping STEP 1 - Re-create Docker image"
+                    }
                 }
-              }
             }
-          }
+        }
+
         stage('Start new container using latest image and create user') {
             steps {     
               script {
-                def dateTime = (sh(script: "date +%Y%m%d%H%M%S", returnStdout: true).trim())
+                def dateTime = sh(script: "date +%Y%m%d%H%M%S", returnStdout: true).trim()
                 def containerName = "${params.ENVIRONMENT_NAME}_${dateTime}"
-                def port = params.MYSQL_PORT.toInteger()
-                    
-                    if (port < 3306 || port > 3314) {
-                        error("Invalid MySQL port. Please provide a valid port number between 3306 and 3314.")
-                    }
-                
-                sh """
-                docker run -itd --name ${containerName} --rm -e MYSQL_ROOT_PASSWORD=${params.MYSQL_PASSWORD} -p ${params.MYSQL_PORT}:3306 ${params.ENVIRONMENT_NAME}:latest
-                """
-                // Get the container IP address
-                def containerIP = sh(script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${containerName}", returnStdout: true).trim()
-               
-                sh """
-                
-                while ! nc -z ${containerIP} 3306; do
-                    sleep 1
-                    echo "Waiting for MySQL to be ready..."
-                done
-                echo 'Connection established'
-                """
-                
-                sh """
-                docker exec ${containerName} /bin/bash -c 'mysql --user="root" --password="${params.MYSQL_PASSWORD}" < /scripts/create_developer.sql'
-                """
-                
-                echo "Docker container created: ${containerName}"
+                def port = params.DB_PORT.toInteger()
+
+                  if ((port >= 3306 && port <= 3314) && params.DB_TYPE == 'mysql') {
+                      sh """
+                      docker run -itd --name ${containerName} --rm -e MYSQL_ROOT_PASSWORD=${params.DB_PASSWORD} -p ${port}:3306 ${params.ENVIRONMENT_NAME}:latest
+                      """
+                      // Get the container IP address
+                      def containerIP = sh(script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${containerName}", returnStdout: true).trim()
+                      
+                      sh """
+                      while ! nc -z ${containerIP} ${port}; do
+                          sleep 1
+                          echo "Waiting for MySQL to be ready..."
+                      done
+                      echo 'Connection established'
+                      """
+                      
+                      sh """
+                      docker exec ${containerName} /bin/bash -c 'mysql --user="root" --password="${params.DB_PASSWORD}" < /scripts/create_developer.sql'
+                      """
+                      echo "Docker container created: ${containerName}"
+                  } else if ((port >= 5432 && port <= 5435) && params.DB_TYPE == 'postgresql') {
+                      
+                      sh "docker run -itd --name ${containerName} --rm -e POSTGRES_PASSWORD=${params.DB_PASSWORD} -p ${port}:5432 ${params.ENVIRONMENT_NAME}:latest"
+                     
+                      // Get the container IP address
+                      def containerIP = sh(script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${containerName}", returnStdout: true).trim()
+                      
+                      sh """
+                      while ! nc -z ${containerIP} ${port}; do
+                          sleep 1
+                          echo "Waiting for PostgreSQL to be ready..."
+                      done
+                      echo 'Connection established'
+                      """
+                      
+                      echo "Docker container created: ${containerName}"
+                  } else {
+                      error("Invalid port or database type.")
+                  }
 
               }
            }        
         }
-   }
+    }
 }
