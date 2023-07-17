@@ -9,7 +9,6 @@ CREATE TABLE departments (
 );
 GRANT ALL PRIVILEGES ON TABLE departments TO developer;
 GRANT ALL PRIVILEGES ON SCHEMA public TO developer;
--- Insert data into departments table
 INSERT INTO departments (DEPT, DEPT_NAME) VALUES (1001, 'Sales');
 INSERT INTO departments (DEPT, DEPT_NAME) VALUES (1002, 'Marketing');
 INSERT INTO departments (DEPT, DEPT_NAME) VALUES (1003, 'HR');
